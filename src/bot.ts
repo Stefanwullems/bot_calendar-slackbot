@@ -1,11 +1,10 @@
 function startBot() {
   setInterval(function() {
     const date = new Date();
-    console.log("hi1");
-    if (date.getHours() === 13 && date.getMinutes() === 33) {
+    if (date.getHours() === 20 && date.getMinutes() === 0) {
       console.log("hi2");
     }
-  }, 1000);
+  }, 60000);
 }
 
 export default startBot;
