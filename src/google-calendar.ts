@@ -12,14 +12,21 @@ const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
 // time.
 const TOKEN_PATH = "token.json";
 
-export default function(callback) {
+export default function(
+  callback: (events: Event[]) => void,
+  timeFrame: TimeFrame
+) {
   fs.readFile("credentials.json", (err, content) => {
     if (err) return console.log("Error loading client secret file:", err);
-    authorize(JSON.parse(content.toString()), callback);
+    authorize(JSON.parse(content.toString()), callback, timeFrame);
   });
 }
 
-function authorize(credentials: Credentials, callback): void {
+function authorize(
+  credentials: Credentials,
+  callback: (events: Event[]) => void,
+  timeFrame: TimeFrame
+): void {
   const { client_secret, client_id, redirect_uris } = credentials.installed;
   const oAuth2Client = new google.auth.OAuth2(
     client_id,
@@ -31,7 +38,7 @@ function authorize(credentials: Credentials, callback): void {
   fs.readFile(TOKEN_PATH, (err, token) => {
     if (err) return getAccessToken(oAuth2Client, callback);
     oAuth2Client.setCredentials(JSON.parse(token.toString()));
-    fetchEvents(oAuth2Client, callback);
+    fetchEvents(oAuth2Client, callback, timeFrame);
   });
 }
 
@@ -64,27 +71,32 @@ function logAuthUrl(client: OAuth2Client, options: GenerateAuthUrlOpts): void {
   );
 }
 
-function fetchEvents(client: OAuth2Client, callback: (events: any[]) => void) {
+interface TimeFrame {
+  timeMin: string;
+  timeMax: string;
+}
+
+function fetchEvents(
+  client: OAuth2Client,
+  callback: (events: Event[]) => void,
+  timeFrame: TimeFrame
+) {
   const calendar = google.calendar({ version: "v3", auth: client });
 
-  const today = new Date();
-  const tomorrow = new Date(Date.now() + 86400000);
-
-  let foundEvents: any[] = [];
+  let foundEvents: Event[] = [];
   let i = 0;
 
   Object.keys(calendarIds).forEach(key => {
     const listEventsOptions: ListEventsOptions = {
       calendarId: calendarIds[key],
-      timeMin: today.toISOString(),
-      timeMax: tomorrow.toISOString(),
+      ...timeFrame,
       singleEvents: true,
       orderBy: "startTime"
     };
 
     calendar.events.list(listEventsOptions, (err, res) => {
       if (err) return console.log("The API returned an error: " + err);
-      const events = res.data.items as any[];
+      const events = res.data.items as Event[];
       i++;
       if (events.length) {
         foundEvents = [...foundEvents, ...events];
