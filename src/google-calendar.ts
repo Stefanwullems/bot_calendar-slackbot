@@ -47,7 +47,7 @@ function authorize(credentials: ICredentials, callback): void {
   });
 }
 
-export function getAccessToken(client: OAuth2Client, callback) {
+function getAccessToken(client: OAuth2Client, callback) {
   logAuthUrl(client, { access_type: "offline", scope: SCOPES });
 
   const rl = readline.createInterface({
@@ -96,15 +96,16 @@ interface ListEventsOptions {
   updatedMin?: string;
 }
 
-export async function listEvents(client: OAuth2Client) {
+function listEvents(client: OAuth2Client) {
   const calendar = google.calendar({ version: "v3", auth: client });
 
   const today = new Date();
   const tomorrow = new Date(Date.now() + 86400000);
 
   let foundEvents: any[] = [];
+  let i = 0;
 
-  Object.keys(calendarIds).forEach(async key => {
+  Object.keys(calendarIds).forEach(key => {
     const listEventsOptions: ListEventsOptions = {
       calendarId: calendarIds[key],
       timeMin: today.toISOString(),
@@ -113,19 +114,18 @@ export async function listEvents(client: OAuth2Client) {
       orderBy: "startTime"
     };
 
-    await Promise.all(
-      calendar.events.list(listEventsOptions, (err, res) => {
-        if (err) return console.log("The API returned an error: " + err);
-        const events = res.data.items;
-        if (events.length) {
-          events.forEach(event => {
-            foundEvents = [...foundEvents, event];
-          });
+    calendar.events.list(listEventsOptions, (err, res) => {
+      if (err) return console.log("The API returned an error: " + err);
+      const events = res.data.items;
+      i++;
+      if (events.length) {
+        foundEvents = [...foundEvents, ...events];
+        if (i === 3) {
+          console.log("hi");
         }
-      })
-    );
+      }
+    });
   });
-  console.log(foundEvents.length);
 }
 
 //const start = event.start.dateTime || event.start.date;
