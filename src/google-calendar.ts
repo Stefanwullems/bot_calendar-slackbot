@@ -4,7 +4,6 @@ import { google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 import { GenerateAuthUrlOpts } from "google-auth-library/build/src/auth/oauth2client";
 import { calendarIds } from "./secrets";
-import { checkIfThereAreEventsPlanned } from "./bot";
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
@@ -13,26 +12,21 @@ const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
 // time.
 const TOKEN_PATH = "token.json";
 
-export default function() {
+export default function(
+  callback: (events: Event[]) => void,
+  timeFrame: TimeFrame
+) {
   fs.readFile("credentials.json", (err, content) => {
     if (err) return console.log("Error loading client secret file:", err);
-    authorize(JSON.parse(content.toString()), listEvents);
+    authorize(JSON.parse(content.toString()), callback, timeFrame);
   });
 }
 
-interface ICredentials {
-  installed: {
-    client_id: string;
-    project_id: string;
-    auth_uri: string;
-    token_uri: string;
-    auth_provider_x509_cert_url: string;
-    client_secret: string;
-    redirect_uris: [string, string];
-  };
-}
-
-function authorize(credentials: ICredentials, callback): void {
+function authorize(
+  credentials: Credentials,
+  callback: (events: Event[]) => void,
+  timeFrame: TimeFrame
+): void {
   const { client_secret, client_id, redirect_uris } = credentials.installed;
   const oAuth2Client = new google.auth.OAuth2(
     client_id,
@@ -44,7 +38,7 @@ function authorize(credentials: ICredentials, callback): void {
   fs.readFile(TOKEN_PATH, (err, token) => {
     if (err) return getAccessToken(oAuth2Client, callback);
     oAuth2Client.setCredentials(JSON.parse(token.toString()));
-    callback(oAuth2Client);
+    fetchEvents(oAuth2Client, callback, timeFrame);
   });
 }
 
@@ -77,52 +71,37 @@ function logAuthUrl(client: OAuth2Client, options: GenerateAuthUrlOpts): void {
   );
 }
 
-interface ListEventsOptions {
-  calendarId: string;
-  alwaysIncludeEmail?: boolean;
-  iCalUID?: string;
-  maxAttendees?: number;
-  maxResults?: number;
-  orderBy?: "startTime" | "updated";
-  pageToken?: string;
-  privateExtendedProperty?: string;
-  q?: string;
-  showDeleted?: boolean;
-  showHiddenInvitations?: boolean;
-  singleEvents?: boolean;
-  syncToken?: string;
-  timeMax?: string;
-  timeMin?: string;
-  timeZone?: string;
-  updatedMin?: string;
+interface TimeFrame {
+  timeMin: string;
+  timeMax: string;
 }
 
-function listEvents(client: OAuth2Client) {
+function fetchEvents(
+  client: OAuth2Client,
+  callback: (events: Event[]) => void,
+  timeFrame: TimeFrame
+) {
   const calendar = google.calendar({ version: "v3", auth: client });
 
-  const today = new Date();
-  const tomorrow = new Date(Date.now() + 86400000);
-
-  let foundEvents: any[] = [];
+  let foundEvents: Event[] = [];
   let i = 0;
 
   Object.keys(calendarIds).forEach(key => {
     const listEventsOptions: ListEventsOptions = {
       calendarId: calendarIds[key],
-      timeMin: today.toISOString(),
-      timeMax: tomorrow.toISOString(),
+      ...timeFrame,
       singleEvents: true,
       orderBy: "startTime"
     };
 
     calendar.events.list(listEventsOptions, (err, res) => {
       if (err) return console.log("The API returned an error: " + err);
-      const events = res.data.items;
+      const events = res.data.items as Event[];
       i++;
       if (events.length) {
         foundEvents = [...foundEvents, ...events];
         if (i === 3) {
-          checkIfThereAreEventsPlanned(foundEvents);
+          callback(foundEvents);
         }
       }
     });
