@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 import { GenerateAuthUrlOpts } from "google-auth-library/build/src/auth/oauth2client";
 import { calendarIds } from "./secrets";
+import { checkIfThereAreEventsPlanned } from "./bot";
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
@@ -121,7 +122,7 @@ function listEvents(client: OAuth2Client) {
       if (events.length) {
         foundEvents = [...foundEvents, ...events];
         if (i === 3) {
-          console.log("hi");
+          checkIfThereAreEventsPlanned(foundEvents);
         }
       }
     });

@@ -7,6 +7,7 @@
   "license": "MIT",
   "dependencies": {
     "@types/node": "^10.12.18",
+    "@types/superagent": "^3.8.5",
     "googleapis": "27",
     "superagent": "^4.0.0",
     "typescript": "^3.2.2"
