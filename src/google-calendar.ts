@@ -90,34 +90,43 @@ interface ListEventsOptions {
   showHiddenInvitations?: boolean;
   singleEvents?: boolean;
   syncToken?: string;
-  timeMax: string;
-  timeMin: string;
-  timeZone: string;
-  updatedMin: string;
+  timeMax?: string;
+  timeMin?: string;
+  timeZone?: string;
+  updatedMin?: string;
 }
 
-export function listEvents(client: OAuth2Client) {
+export async function listEvents(client: OAuth2Client) {
   const calendar = google.calendar({ version: "v3", auth: client });
 
-  const listEventsOptions: ListEventsOptions = {
-    calendarId: "primary",
-    timeMin: new Date().toISOString(),
-    maxResults: 10,
-    singleEvents: true,
-    orderBy: "startTime"
-  };
+  const today = new Date();
+  const tomorrow = new Date(Date.now() + 86400000);
 
-  calendar.events.list(listEventsOptions, (err, res) => {
-    if (err) return console.log("The API returned an error: " + err);
-    const events = res.data.items;
-    if (events.length) {
-      console.log("Upcoming 10 events:");
-      events.map((event, i) => {
-        const start = event.start.dateTime || event.start.date;
-        console.log(`${start} - ${event.summary}`);
-      });
-    } else {
-      console.log("No upcoming events found.");
-    }
+  let foundEvents: any[] = [];
+
+  Object.keys(calendarIds).forEach(async key => {
+    const listEventsOptions: ListEventsOptions = {
+      calendarId: calendarIds[key],
+      timeMin: today.toISOString(),
+      timeMax: tomorrow.toISOString(),
+      singleEvents: true,
+      orderBy: "startTime"
+    };
+
+    await Promise.all(
+      calendar.events.list(listEventsOptions, (err, res) => {
+        if (err) return console.log("The API returned an error: " + err);
+        const events = res.data.items;
+        if (events.length) {
+          events.forEach(event => {
+            foundEvents = [...foundEvents, event];
+          });
+        }
+      })
+    );
   });
+  console.log(foundEvents.length);
 }
+
+//const start = event.start.dateTime || event.start.date;
+//console.log(`${start} - ${event.summary}`);
