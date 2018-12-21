@@ -9,8 +9,8 @@ function startBot() {
       timeMax: new Date(Date.now() + 1800050).toISOString()
     });
     connectToGoogleCalendar(checkIfEventStartsNow, {
-      timeMin: new Date(Date.now()).toISOString(),
-      timeMax: new Date(Date.now() + 60000).toISOString()
+      timeMin: new Date(Date.now() - 60000).toISOString(),
+      timeMax: new Date(Date.now()).toISOString()
     });
 
     if (date.getHours() === 20 && date.getMinutes() === 0) {
@@ -32,17 +32,19 @@ function checkIfThereAreEventsPlanned(events: Event[]) {
 
 function checkIfEventStartsSoon(events: Event[]) {
   if (events.length) {
-    events.forEach(event =>
-      sendMessageToSlack(`You have ${event.summary} starting in 30 minutes`)
-    );
+    events.forEach(event => {
+      if (Date.now() < Date.parse(event.start.dateTime) - 1800000)
+        sendMessageToSlack(`You have ${event.summary} starting in 30 minutes`);
+    });
   }
 }
 
 function checkIfEventStartsNow(events: Event[]) {
   if (events.length) {
-    events.forEach(event =>
-      sendMessageToSlack(`You have ${event.summary} starting in now`)
-    );
+    events.forEach(event => {
+      if (Date.now() < Date.parse(event.start.dateTime))
+        sendMessageToSlack(`You have ${event.summary} starting now`);
+    });
   }
 }
 
