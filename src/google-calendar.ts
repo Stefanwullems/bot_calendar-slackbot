@@ -3,6 +3,7 @@ import * as readline from "readline";
 import { google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 import { GenerateAuthUrlOpts } from "google-auth-library/build/src/auth/oauth2client";
+import { calendarIds } from "./secrets";
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
@@ -75,32 +76,48 @@ function logAuthUrl(client: OAuth2Client, options: GenerateAuthUrlOpts): void {
   );
 }
 
-/**
- * Lists the next 10 events on the user's primary calendar.
- * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
- */
-export function listEvents(auth) {
-  const calendar = google.calendar({ version: "v3", auth });
-  calendar.events.list(
-    {
-      calendarId: "primary",
-      timeMin: new Date().toISOString(),
-      maxResults: 10,
-      singleEvents: true,
-      orderBy: "startTime"
-    },
-    (err, res) => {
-      if (err) return console.log("The API returned an error: " + err);
-      const events = res.data.items;
-      if (events.length) {
-        console.log("Upcoming 10 events:");
-        events.map((event, i) => {
-          const start = event.start.dateTime || event.start.date;
-          console.log(`${start} - ${event.summary}`);
-        });
-      } else {
-        console.log("No upcoming events found.");
-      }
+interface ListEventsOptions {
+  calendarId: string;
+  alwaysIncludeEmail?: boolean;
+  iCalUID?: string;
+  maxAttendees?: number;
+  maxResults?: number;
+  orderBy?: "startTime" | "updated";
+  pageToken?: string;
+  privateExtendedProperty?: string;
+  q?: string;
+  showDeleted?: boolean;
+  showHiddenInvitations?: boolean;
+  singleEvents?: boolean;
+  syncToken?: string;
+  timeMax: string;
+  timeMin: string;
+  timeZone: string;
+  updatedMin: string;
+}
+
+export function listEvents(client: OAuth2Client) {
+  const calendar = google.calendar({ version: "v3", auth: client });
+
+  const listEventsOptions: ListEventsOptions = {
+    calendarId: "primary",
+    timeMin: new Date().toISOString(),
+    maxResults: 10,
+    singleEvents: true,
+    orderBy: "startTime"
+  };
+
+  calendar.events.list(listEventsOptions, (err, res) => {
+    if (err) return console.log("The API returned an error: " + err);
+    const events = res.data.items;
+    if (events.length) {
+      console.log("Upcoming 10 events:");
+      events.map((event, i) => {
+        const start = event.start.dateTime || event.start.date;
+        console.log(`${start} - ${event.summary}`);
+      });
+    } else {
+      console.log("No upcoming events found.");
     }
-  );
+  });
 }
